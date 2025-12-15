@@ -1,0 +1,13 @@
+smtp:
+  host: smtp.office365.com
+  port: 587
+  use_tls: true
+  username: ""
+  password: ""
+
+email:
+  from: ""
+  to:
+    - Nimesh.Desai@ibm.com
+  subject_prefix: "[IBM Cinder Gerrit Summary]"
+  weekly_subject: "Weekly IBM Cinder Patch Digest"

@@ -1,0 +1,23 @@
+Adding support for CINDER plugin registration: https://review.opendev.org/c/openstack/cinder/+/951829 
+Added support for volumegroup-snapshot for temporary volumegroup:  https://review.opendev.org/c/openstack/cinder/+/926844
+Added support for restorefromsnapshot CLI for volumegroups: https://review.opendev.org/c/openstack/cinder/+/916722
+Added support of clone operation for volumegroup:  https://review.opendev.org/c/openstack/cinder/+/938771
+Adding support for individual volume snapshots | https://review.opendev.org/c/openstack/cinder/+/949006 
+Adding support for Individual volume clone | https://review.opendev.org/c/openstack/cinder/+/951157
+[IBM SVf driver] Adding support for PBHA partition backend | https://review.opendev.org/c/openstack/cinder/+/943364
+[IBM SVf driver] PBHA Volume Extend Support | https://review.opendev.org/c/openstack/cinder/+/949483
+[IBM SVf driver] Adding support for PBHA volumegroup update | https://review.opendev.org/c/openstack/cinder/+/950860
+[IBM SVf driver] Support PBHA properties reporting | https://review.opendev.org/c/openstack/cinder/+/952422
+[IBM SVf driver] Support PBHA group-snappshot and restore | https://review.opendev.org/c/openstack/cinder/+/952432
+[IBM SVf driver] Adding policing for PBHA partition | https://review.opendev.org/c/openstack/cinder/+/958138
+[IBM SVf driver] Support location affinity to hosts in PBHA partition. | https://review.opendev.org/c/openstack/cinder/+/963620
+[IBM SVf driver] Adding support for PBHA volume manage operation | https://review.opendev.org/c/openstack/cinder/+/962244
+[IBM SVf Driver] Add basic support for Policy-Based Replication (PBR) | https://review.opendev.org/c/openstack/cinder/+/965442
+[IBM SVf Driver] List replication-policies (PBR) | https://review.opendev.org/c/openstack/cinder/+/965813
+VGS - Doc: Documentation updates for ibm-svf-volumegroup feature. :  https://review.opendev.org/c/openstack/cinder/+/929906
+VGS 2.0 - Doc: Documentation updates for ibm-svf-volumegroup feature. | https://review.opendev.org/c/openstack/cinder/+/958465
+[IBM SVf Driver] Replace Error constants with meaningful significant names | https://review.opendev.org/c/openstack/cinder/+/959683
+lsportip needs to fetch IPs with "host" flag - https://review.opendev.org/c/openstack/cinder/+/869305
+Invalid Exception raised due to invalid portset value - https://review.opendev.org/c/openstack/cinder/+/874633
+Enable support to retype ‘iogrp’ of an ‘in-use’ volume - https://review.opendev.org/c/openstack/cinder/+/912060
+Enable support to extend a volume with snapshot - https://review.opendev.org/c/openstack/cinder/+/912053
