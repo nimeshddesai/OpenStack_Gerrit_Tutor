@@ -5,12 +5,14 @@ import sys
 import smtplib
 import json
 import re
-from typing import Any, Dict, Set
+from typing import Any, Dict, Set, List
+from urllib.parse import quote
 from email.message import EmailMessage
 from datetime import datetime, timedelta
 from html import escape
 import yaml
 import requests
+
 
 from config import BASE_DIR, GERRIT_BASE_URL, PATCH_LIST_FILE, \
     EMAIL_CONFIG_FILE
@@ -116,7 +118,7 @@ def _strip_gerrit_prefix(response_text: str) -> str:
     return response_text
 
 
-def _get(endpoint: str) -> Any:
+def get(endpoint: str) -> Any:
     """
     Perform a GET request to Gerrit REST API.
 
@@ -150,7 +152,7 @@ def build_patch_summary(change_id: str) -> str:
     :param change_id: Gerrit change number
     :return: Patch summary text
     """
-    data = _get(f"/changes/{change_id}/detail")
+    data = get(f"/changes/{change_id}/detail")
 
     labels = data.get("labels", {})
     label_summary = []
@@ -261,3 +263,111 @@ def updated_within_last_week(updated: str) -> bool:
     """
     updated_dt = datetime.fromisoformat(updated.replace("Z", ""))
     return updated_dt >= datetime.utcnow() - timedelta(days=7)
+
+
+def get_change_with_revision(change_id: str) -> dict:
+    """
+    Fetch change details including current revision.
+
+    :param change_id: Gerrit change number
+    :return: Change data with revision info
+    """
+    return get(
+        f"/changes/{change_id}/detail?o=CURRENT_REVISION"
+    )
+
+
+def get_current_revision(change_id: str) -> str:
+    """
+    Fetch the current revision ID for a Gerrit patch.
+
+    Gerrit requires explicit options to return revision data.
+
+    :param change_id: Gerrit change number
+    :return: Current revision ID
+    """
+
+    change = get_change_with_revision(change_id)
+    revision = change["current_revision"]
+    if not revision:
+        raise ValueError(
+            f"Current revision not found for patch {change_id}"
+        )
+
+    return revision
+
+
+def review_diff(diff_text: str) -> List[str]:
+    """
+    Perform basic heuristic review on a diff.
+
+    :param diff_text: Unified diff text
+    :return: List of review comments
+    """
+    comments = []
+
+    if "print(" in diff_text:
+        comments.append("Avoid using print(); use logging instead.")
+
+    if "TODO" in diff_text:
+        comments.append("Found TODO comment; ensure it is addressed.")
+
+    if "except Exception" in diff_text:
+        comments.append(
+            "Avoid catching broad Exception; catch specific exceptions."
+        )
+
+    if "pass\n" in diff_text:
+        comments.append(
+            "Found 'pass' statement; ensure this is intentional."
+        )
+
+    return comments
+
+
+def decode_diff_content(content: list) -> str:
+    """
+    Decode Gerrit diff content blocks into readable text.
+
+    :param content: Gerrit diff 'content' array
+    :return: Unified diff text
+    """
+    lines = []
+
+    for block in content:
+        if "ab" in block:
+            lines.extend(block["ab"])
+
+        elif "a" in block:
+            lines.extend(f"-{line}" for line in block["a"])
+
+        elif "b" in block:
+            lines.extend(f"+{line}" for line in block["b"])
+
+        # skip blocks are ignored
+
+    return "".join(lines)
+
+
+def fetch_file_diff(
+    change_id: str,
+    revision: str,
+    file_path: str,
+) -> str:
+    """
+    Fetch and decode unified diff for a Gerrit patch file.
+
+    :param change_id: Gerrit change number
+    :param revision: Revision SHA
+    :param file_path: File path in patch
+    :return: Decoded diff text
+    """
+    encoded_path = quote(file_path, safe="")
+
+    diff = get(
+        f"/changes/{change_id}/revisions/{revision}"
+        f"/files/{encoded_path}/diff"
+    )
+
+    diff_text = decode_diff_content(diff.get("content", []))
+    return diff_text

@@ -13,12 +13,11 @@ Compatible with Claude Desktop using MCP + FastMCP (STUDIO mode).
 
 import traceback
 from typing import Any, Dict, List
-from config import GERRIT_BASE_URL
-from tools import ALLOWED_PATCHES, is_ibm_patch, non_ibm_response, _get, log, \
-    send_email, extract_change_number, updated_within_last_week, \
-    build_patch_summary, build_patch_html_row, build_html_email
 
 from fastmcp import FastMCP
+
+from config import GERRIT_BASE_URL
+import tools
 
 
 mcp = FastMCP(name="openstack-gerrit-mcp")
@@ -33,10 +32,10 @@ def get_patch_details(change_id: str) -> Dict[str, Any]:
     :return: Patch metadata including status, owner, labels, and reviewers
     """
     try:
-        if not is_ibm_patch(change_id):
-            return non_ibm_response(change_id)
+        if not tools.is_ibm_patch(change_id):
+            return tools.non_ibm_response(change_id)
 
-        data = _get(f"/changes/{change_id}/detail")
+        data = tools.get(f"/changes/{change_id}/detail")
 
         return {
             "id": data.get("id"),
@@ -55,7 +54,7 @@ def get_patch_details(change_id: str) -> Dict[str, Any]:
             "current_revision": data.get("current_revision"),
         }
     except Exception as e:
-        log(traceback.format_exc())
+        tools.log(traceback.format_exc())
         return {
             "change_id": change_id,
             "message": str(e)
@@ -70,10 +69,10 @@ def get_patch_comments(change_id: str) -> Dict[str, Any]:
     :param change_id: Gerrit change number or Change-Id
     :return: Dictionary of file-wise and general comments
     """
-    if not is_ibm_patch(change_id):
-        return non_ibm_response(change_id)
+    if not tools.is_ibm_patch(change_id):
+        return tools.non_ibm_response(change_id)
 
-    comments = _get(f"/changes/{change_id}/comments")
+    comments = tools.get(f"/changes/{change_id}/comments")
     return {"comments": comments}
 
 
@@ -85,10 +84,10 @@ def get_patch_progress(change_id: str) -> Dict[str, Any]:
     :param change_id: Gerrit change number or Change-Id
     :return: Review labels with approvals and scores
     """
-    if not is_ibm_patch(change_id):
-        return non_ibm_response(change_id)
+    if not tools.is_ibm_patch(change_id):
+        return tools.non_ibm_response(change_id)
 
-    data = _get(f"/changes/{change_id}/detail")
+    data = tools.get(f"/changes/{change_id}/detail")
     return {
         "status": data.get("status"),
         "labels": data.get("labels"),
@@ -110,7 +109,7 @@ def search_patches(query: str, limit: int = 5) -> List[Dict[str, Any]]:
     :param limit: Max results to return
     :return: List of patch summaries
     """
-    data = _get(f"/changes/?q={query}&n={limit}")
+    data = tools.get(f"/changes/?q={query}&n={limit}")
 
     return [
         {
@@ -132,7 +131,7 @@ def list_allowed_patches() -> List[str]:
     :return: List of allowed patch IDs
     """
     # log(ALLOWED_PATCHES)
-    return sorted(ALLOWED_PATCHES)
+    return sorted(tools.ALLOWED_PATCHES)
 
 
 @mcp.tool()
@@ -147,7 +146,8 @@ def send_summary_email(subject: str, email_body: str, html_body: str) \
     :return: Email dispatch status
     """
 
-    send_email(subject=subject, text_body=email_body, html_body=html_body)
+    tools.send_email(subject=subject, text_body=email_body,
+                     html_body=html_body)
 
     return {
         "sent": True,
@@ -167,12 +167,12 @@ def send_patch_summary_email(change_ids: List[str]) -> Dict[str, Any]:
     skipped = []
 
     for raw_id in change_ids:
-        normalized = extract_change_number(raw_id)
-        if not normalized or not is_ibm_patch(normalized):
+        normalized = tools.extract_change_number(raw_id)
+        if not normalized or not tools.is_ibm_patch(normalized):
             skipped.append(raw_id)
             continue
 
-        summaries.append(build_patch_summary(normalized))
+        summaries.append(tools.build_patch_summary(normalized))
 
     if not summaries:
         return {
@@ -182,7 +182,7 @@ def send_patch_summary_email(change_ids: List[str]) -> Dict[str, Any]:
         }
 
     email_body = "\n\n".join(summaries)
-    send_email(subject="Patch Summary", text_body=email_body)
+    tools.send_email(subject="Patch Summary", text_body=email_body)
 
     return {
         "sent": True,
@@ -202,13 +202,13 @@ def send_weekly_digest_email() -> Dict[str, Any]:
     rows = []
     text_lines = []
 
-    for change_id in sorted(ALLOWED_PATCHES):
-        data = _get(f"/changes/{change_id}/detail")
+    for change_id in sorted(tools.ALLOWED_PATCHES):
+        data = tools.get(f"/changes/{change_id}/detail")
 
-        if not updated_within_last_week(data.get("updated", "")):
+        if not tools.updated_within_last_week(data.get("updated", "")):
             continue
 
-        rows.append(build_patch_html_row(data))
+        rows.append(tools.build_patch_html_row(data))
         text_lines.append(
             f"{data.get('subject')} | {data.get('status')} | "
             f"{GERRIT_BASE_URL}/c/{change_id}"
@@ -220,12 +220,12 @@ def send_weekly_digest_email() -> Dict[str, Any]:
             "message": "No IBM Cinder patches updated in the last week.",
         }
 
-    html_body = build_html_email(
+    html_body = tools.build_html_email(
         title="Weekly IBM Cinder Gerrit Digest",
         rows="".join(rows),
     )
 
-    send_email(
+    tools.send_email(
         subject="Weekly Patch Digest",
         text_body="\n".join(text_lines),
         html_body=html_body,
@@ -234,6 +234,74 @@ def send_weekly_digest_email() -> Dict[str, Any]:
     return {
         "sent": True,
         "patches_included": len(rows),
+    }
+
+
+@mcp.tool()
+def list_patch_files(change_id: str) -> Dict[str, Any]:
+    """
+    List files modified in an IBM Cinder Gerrit patch.
+
+    :param change_id: Gerrit change number or URL
+    :return: List of modified files
+    """
+    normalized = tools.extract_change_number(change_id)
+    tools.log(f'normalized: {normalized}')
+    if not normalized or not tools.is_ibm_patch(normalized):
+        return tools.non_ibm_response(change_id)
+
+    revision = tools.get_current_revision(normalized)
+    tools.log(f'revision: {revision}')
+    files = tools.get(
+        f"/changes/{normalized}/revisions/{revision}/files/"
+    )
+
+    return {
+        "allowed": True,
+        "patch": normalized,
+        "files": list(files.keys()),
+    }
+
+
+@mcp.tool()
+def review_patch_code(change_id: str) -> Dict[str, Any]:
+    """
+    Perform automated review of code changes in an IBM Cinder patch.
+
+    :param change_id: Gerrit change number or URL
+    :return: Review findings per file
+    """
+    normalized = tools.extract_change_number(change_id)
+    if not normalized or not tools.is_ibm_patch(normalized):
+        return tools.non_ibm_response(change_id)
+
+    revision = tools.get_current_revision(normalized)
+    files = tools.get(
+        f"/changes/{normalized}/revisions/{revision}/files/"
+    )
+
+    review_results = {}
+
+    for file_path in files.keys():
+        if file_path.startswith("/"):
+            continue
+
+        diff_text = tools.fetch_file_diff(
+            change_id=normalized,
+            revision=revision,
+            file_path=file_path,
+        )
+
+        comments = tools.review_diff(diff_text)
+
+        if comments:
+            review_results[file_path] = comments
+
+    return {
+        "allowed": True,
+        "patch": normalized,
+        "issues_found": len(review_results),
+        "review": review_results,
     }
 
 
