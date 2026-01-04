@@ -8,6 +8,6 @@ smtp:
 email:
   from: ""
   to:
-    - Nimesh.Desai@ibm.com
-  subject_prefix: "[IBM Cinder Gerrit Summary]"
-  weekly_subject: "Weekly IBM Cinder Patch Digest"
+    - 
+  subject_prefix: ""
+  weekly_subject: "Weekly Patch Digest"

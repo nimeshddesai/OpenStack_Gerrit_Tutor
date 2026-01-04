@@ -5,5 +5,5 @@ import pathlib
 BASE_DIR = pathlib.Path(__file__).resolve().parent
 
 GERRIT_BASE_URL = "https://review.opendev.org"
-PATCH_LIST_FILE = "ibm_cinder_patches.txt"
+PATCH_LIST_FILE = "patches.txt"
 EMAIL_CONFIG_FILE = "email_config.yaml"
